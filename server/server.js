@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const multer = require('multer');
 
 // Import routes
 const postRoutes = require('./routes/posts');
@@ -73,6 +74,27 @@ process.on('unhandledRejection', (err) => {
   console.error('Unhandled Promise Rejection:', err);
   // Close server & exit process
   process.exit(1);
+});
+
+// Setup multer to store files in /uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
+});
+
+const upload = multer({ storage });
+
+// Serve uploads folder
+app.use('/uploads', express.static('uploads'));
+
+// In your post route:
+router.post('/posts', upload.single('image'), async (req, res) => {
+  const { title, content, category } = req.body;
+  const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
+
+  const post = new Post({ title, content, category, image: imageUrl });
+  const saved = await post.save();
+  res.status(201).json(saved);
 });
 
 module.exports = app; 
